@@ -68,12 +68,18 @@
   .problem { background: #fff7e6; border: 1px solid #f3d38b; color: #7a5300; padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; font-size: 13px; }
 
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 10; }
-  .modal { background: #fff; border-radius: 12px; padding: 16px; width: min(1000px, 94vw); max-height: 94vh; display: flex; flex-direction: column; gap: 10px; }
+  .modal { background: #fff; border-radius: 12px; padding: 16px; width: min(1000px, 94vw); max-height: 94vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
   .modal.narrow { width: min(560px, 94vw); }
   .modal-head { display: flex; justify-content: space-between; align-items: center; }
   .modal-head h2 { margin: 0; font-size: 16px; }
   .preview-frame { width: 100%; aspect-ratio: 16 / 9; border: none; border-radius: 8px; background: #000; }
   .hidden { display: none !important; }
+  .export-opt { display: flex; gap: 14px; align-items: flex-start; text-align: left; padding: 14px 16px; border-radius: 10px; width: 100%; }
+  .export-opt .ico { font-size: 28px; line-height: 1; }
+  .export-opt b { display: block; font-size: 15px; margin-bottom: 4px; }
+  .export-opt span.d { color: var(--muted); font-size: 12px; line-height: 1.6; }
+  .icon-preview { width: 64px; height: 64px; border-radius: 12px; border: 1px solid var(--line); background: #eee center/contain no-repeat; flex: none; }
+  .progress { color: var(--accent); font-weight: 600; }
   .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #222; color: #fff; padding: 10px 18px; border-radius: 8px; z-index: 20; font-size: 13px; }
   @media (max-width: 800px) {
     .layout { flex-direction: column; }
@@ -140,6 +146,31 @@
     <div class="field"><label>標準の背景色</label><input type="color" id="set-bg"></div>
     <div class="field"><label>文字色</label><input type="color" id="set-fg"></div>
     <div class="field"><label>アクセント色（選択肢・名前欄など）</label><input type="color" id="set-accent"></div>
+    <h3 style="margin:6px 0 0;font-size:14px">EXE出力（Windows用）の設定</h3>
+    <div class="field"><label>アイコン（PNG / JPEG。正方形の画像がおすすめ）</label>
+      <div class="row"><div class="icon-preview" id="set-icon-preview"></div>
+        <button id="btn-icon-pick">画像を選ぶ…</button><button id="btn-icon-reset" class="small">標準に戻す</button>
+        <input type="file" id="icon-input" accept="image/png,image/jpeg,image/webp" class="hidden"></div></div>
+    <div class="field"><label>ウィンドウの初期サイズ</label>
+      <select id="set-size"><option value="1280x720">1280 × 720（標準・16:9）</option><option value="960x540">960 × 540（小さめ・16:9）</option><option value="1600x900">1600 × 900（大きめ・16:9）</option><option value="1024x768">1024 × 768（4:3）</option></select></div>
+    <div class="field"><label>バージョン（はじめにお読みください.txt に記載）</label><input type="text" id="set-version" placeholder="1.0"></div>
+    <div class="field"><label>お問い合わせ先（はじめにお読みください.txt に記載。メールアドレス・SNSなど）</label><input type="text" id="set-contact" placeholder="例：https://x.com/your_account"></div>
+  </div>
+</div>
+
+<!-- 出力 -->
+<div class="modal-bg hidden" id="export-modal">
+  <div class="modal narrow">
+    <div class="modal-head"><h2>ゲームを出力</h2><button id="btn-export-close">閉じる</button></div>
+    <div id="export-problems"></div>
+    <button class="export-opt" id="btn-export-exe"><span class="ico">🪟</span><span>
+      <b>Windows用 EXE（販売・配布向け）</b>
+      <span class="d">ゲーム名.exe・はじめにお読みください.txt・ライセンス表記をまとめたZIPファイルを作ります。
+      DLsite などの販売サイトに登録しやすい形にまとめます。対応OS：Windows 10 / 11（64bit）</span></span></button>
+    <button class="export-opt" id="btn-export-html"><span class="ico">🌐</span><span>
+      <b>HTMLファイル</b>
+      <span class="d">1つのHTMLファイルに出力します。ブラウザで開いて遊べます（Mac・スマホでも可）。体験版の配布やWeb公開向け。</span></span></button>
+    <div class="hint" id="export-status" style="margin:0"></div>
   </div>
 </div>
 
@@ -164,21 +195,22 @@
 <script type="text/plain" id="tpl-css">
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:#000;overflow:hidden}
-body{font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho","MS PMincho",serif;color:var(--fg);user-select:none}
+body{font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho","MS PMincho",serif;color:var(--fg);user-select:none;-webkit-user-select:none}
 #game{position:fixed;inset:0;background:var(--bg);transition:background .6s}
 .screen{position:absolute;inset:0}
 .hidden{display:none!important}
-#title-screen,#end-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:20px}
+#title-screen,#end-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:20px}
 #title-screen h1{font-size:clamp(28px,6vw,64px);margin:0 0 4px;letter-spacing:.08em;text-shadow:0 2px 12px rgba(0,0,0,.4)}
-#t-author{opacity:.75;margin-bottom:24px}
+#t-author{opacity:.75;margin-bottom:20px}
 #end-screen h2{font-size:clamp(28px,5vw,56px);margin:0;letter-spacing:.2em}
 #end-screen .end-name{font-size:clamp(16px,2.6vw,26px);opacity:.85}
-.menu-btn{font:inherit;font-size:18px;min-width:220px;padding:12px 24px;color:var(--fg);background:rgba(0,0,0,.35);border:1px solid var(--accent);border-radius:6px;cursor:pointer;transition:.15s}
-.menu-btn:hover{background:var(--accent);color:#fff}
+.menu-btn{font:inherit;font-size:18px;min-width:220px;padding:11px 24px;color:var(--fg);background:rgba(0,0,0,.35);border:1px solid var(--accent);border-radius:6px;cursor:pointer;transition:.15s}
+.menu-btn:hover,.menu-btn:focus-visible{background:var(--accent);color:#fff;outline:none}
 .menu-btn:disabled{opacity:.35;cursor:default;background:rgba(0,0,0,.35);color:var(--fg)}
 #topbar{position:absolute;top:10px;right:12px;display:flex;gap:8px;z-index:3}
-#topbar button{font:inherit;font-size:13px;padding:5px 12px;color:var(--fg);background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.25);border-radius:4px;cursor:pointer}
-#topbar button:hover{border-color:var(--accent)}
+#topbar button,#title-tools button{font:inherit;font-size:13px;padding:5px 12px;color:var(--fg);background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.25);border-radius:4px;cursor:pointer}
+#topbar button:hover,#title-tools button:hover{border-color:var(--accent)}
+#title-tools{position:absolute;top:10px;right:12px;display:flex;gap:8px}
 #scene-name{position:absolute;top:12px;left:16px;font-size:13px;opacity:.6}
 #msgbox{position:absolute;left:3%;right:3%;bottom:4%;min-height:26%;background:rgba(0,0,0,.62);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:clamp(14px,2.5vw,26px) clamp(18px,3vw,34px);cursor:pointer}
 #speaker{position:absolute;top:-18px;left:22px;background:var(--accent);color:#fff;padding:4px 18px;border-radius:4px;font-size:clamp(14px,1.8vw,18px);font-weight:bold}
@@ -188,22 +220,35 @@ body{font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho","MS PMincho",seri
 #choices{position:absolute;left:0;right:0;top:8%;bottom:34%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:2;padding:0 10%}
 #choices button{font:inherit;font-size:clamp(15px,2vw,20px);width:min(640px,100%);padding:14px 20px;color:var(--fg);background:rgba(0,0,0,.7);border:1px solid var(--accent);border-radius:8px;cursor:pointer;transition:.15s}
 #choices button:hover,#choices button:focus{background:var(--accent);color:#fff;outline:none}
-#toast{position:absolute;top:50px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;padding:8px 18px;border-radius:6px;font-size:14px;z-index:5}
+#slots-screen{background:rgba(0,0,0,.94);z-index:6;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4% 6%;gap:16px}
+#slots-screen h2{margin:0;font-size:clamp(20px,3vw,30px);letter-spacing:.15em}
+#slot-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:min(900px,100%)}
+.slot{font:inherit;text-align:left;color:var(--fg);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:12px 16px;cursor:pointer;min-height:84px;transition:.15s}
+.slot:hover:not(:disabled),.slot:focus-visible{border-color:var(--accent);background:rgba(255,255,255,.12);outline:none}
+.slot:disabled{opacity:.4;cursor:default}
+.slot .no{font-weight:bold;color:var(--accent);margin-right:8px}
+.slot .date{font-size:12px;opacity:.7}
+.slot .snip{font-size:14px;opacity:.9;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#toast{position:absolute;top:50px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:8px 18px;border-radius:6px;font-size:14px;z-index:9}
+@media (max-width:640px){#slot-list{grid-template-columns:1fr}}
 </script>
 
 <script type="text/plain" id="tpl-body">
 <div id="game">
   <div id="title-screen" class="screen">
+    <div id="title-tools"><button id="btn-fs-title">全画面</button></div>
     <h1 id="t-title"></h1>
     <div id="t-author"></div>
     <button class="menu-btn" id="btn-start">はじめから</button>
     <button class="menu-btn" id="btn-continue">つづきから</button>
+    <button class="menu-btn hidden" id="btn-quit">ゲーム終了</button>
   </div>
   <div id="play-screen" class="screen hidden">
     <div id="scene-name"></div>
     <div id="topbar">
       <button id="btn-save">セーブ</button>
       <button id="btn-load">ロード</button>
+      <button id="btn-fs">全画面</button>
       <button id="btn-totitle">タイトル</button>
     </div>
     <div id="choices" class="hidden"></div>
@@ -218,6 +263,11 @@ body{font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho","MS PMincho",seri
     <div class="end-name" id="end-name"></div>
     <button class="menu-btn" id="btn-end-title" style="margin-top:20px">タイトルへ戻る</button>
   </div>
+  <div id="slots-screen" class="screen hidden">
+    <h2 id="slots-title">セーブ</h2>
+    <div id="slot-list"></div>
+    <button class="menu-btn" id="btn-slots-back">戻る</button>
+  </div>
   <div id="toast" class="hidden"></div>
 </div>
 </script>
@@ -227,11 +277,14 @@ body{font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho","MS PMincho",seri
   "use strict";
   var G = GAME, O = OPTS || {};
   var S = G.settings || {};
+  var NATIVE = !!window.__NOVEL_EXE__ && typeof window.novelSave === "function";
+  var SLOTS = 6;
   var byId = {};
   G.scenes.forEach(function (s) { byId[s.id] = s; });
-  var SAVE_KEY = "novel-save:" + (G.title || "game");
+  var PREFIX = "novel-save:" + (G.id || G.title || "game") + ":";
   var st = { scene: null, line: 0 };
   var typing = false, timer = null, chars = [], shown = 0, inChoice = false;
+  var slotsReturn = null;
 
   function $(id) { return document.getElementById(id); }
   function show(id) {
@@ -239,16 +292,35 @@ body{font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho","MS PMincho",seri
   }
   function toast(msg) {
     var t = $("toast"); t.textContent = msg; t.classList.remove("hidden");
-    clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.add("hidden"); }, 1500);
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.add("hidden"); }, 1600);
   }
-  function storage() { try { return window.localStorage; } catch (e) { return null; } }
-  function readSave() { try { var s = storage(); return s && JSON.parse(s.getItem(SAVE_KEY)); } catch (e) { return null; } }
+
+  // ---- 保存先：EXE ではアプリのフォルダ、ブラウザでは localStorage ----
+  function storeGet(key) {
+    if (NATIVE) return window.novelLoad(key).then(function (v) { return v || null; });
+    try { return Promise.resolve(window.localStorage.getItem(PREFIX + key)); }
+    catch (e) { return Promise.resolve(null); }
+  }
+  function storeSet(key, val) {
+    if (NATIVE) return window.novelSave(key, val);
+    try { window.localStorage.setItem(PREFIX + key, val); return Promise.resolve(); }
+    catch (e) { return Promise.reject(e); }
+  }
+  function readSlot(i) {
+    return storeGet("slot" + i).then(function (v) { try { return v ? JSON.parse(v) : null; } catch (e) { return null; } });
+  }
+  function readAllSlots() {
+    var ps = [];
+    for (var i = 1; i <= SLOTS; i++) ps.push(readSlot(i));
+    return Promise.all(ps);
+  }
 
   var root = document.documentElement.style;
   root.setProperty("--bg", S.bg || "#1b1d2a");
   root.setProperty("--fg", S.fg || "#f5f5f5");
   root.setProperty("--accent", S.accent || "#c8546a");
   document.title = G.title || "ノベルゲーム";
+  if (NATIVE) $("btn-quit").classList.remove("hidden");
 
   function setBg(scene) { $("game").style.background = (scene && scene.bg) ? scene.bg : ""; }
 
@@ -256,8 +328,10 @@ body{font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho","MS PMincho",seri
     clearInterval(timer); setBg(null);
     $("t-title").textContent = G.title || "無題のゲーム";
     $("t-author").textContent = S.author ? "作：" + S.author : "";
-    $("btn-continue").disabled = !readSave();
+    $("btn-continue").disabled = true;
+    readAllSlots().then(function (all) { $("btn-continue").disabled = !all.some(Boolean); });
     show("title-screen");
+    setTimeout(function () { $("btn-start").focus(); }, 0);
   }
 
   function startScene(id, line, hops) {
@@ -305,7 +379,7 @@ body{font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho","MS PMincho",seri
   }
 
   function advance() {
-    if (inChoice || $("play-screen").classList.contains("hidden")) return;
+    if (inChoice || slotsReturn || $("play-screen").classList.contains("hidden")) return;
     if (typing) { finishTyping(); return; }
     st.line++;
     showLine();
@@ -337,34 +411,85 @@ body{font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho","MS PMincho",seri
     show("end-screen");
   }
 
-  function save() {
-    var s = storage();
-    try { s.setItem(SAVE_KEY, JSON.stringify({ scene: st.scene, line: st.line })); toast("セーブしました"); }
-    catch (e) { toast("この環境ではセーブできません"); }
+  // ---- セーブ／ロード画面 ----
+  function fmtDate(t) {
+    var d = new Date(t), p = function (n) { return (n < 10 ? "0" : "") + n; };
+    return d.getFullYear() + "/" + p(d.getMonth() + 1) + "/" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
   }
-  function load() {
-    var d = readSave();
-    if (!d || !byId[d.scene]) { toast("セーブデータがありません"); return; }
-    startScene(d.scene, Math.min(d.line, Math.max(0, byId[d.scene].lines.length - 1)));
-    toast("ロードしました");
+  function openSlots(mode) {
+    slotsReturn = mode;
+    $("slots-title").textContent = mode === "save" ? "セーブ" : "ロード";
+    readAllSlots().then(function (all) {
+      var list = $("slot-list"); list.innerHTML = "";
+      all.forEach(function (d, i) {
+        var b = document.createElement("button");
+        b.className = "slot";
+        var head = document.createElement("div");
+        var no = document.createElement("span"); no.className = "no"; no.textContent = "No." + (i + 1);
+        var date = document.createElement("span"); date.className = "date"; date.textContent = d ? fmtDate(d.time) : "― データなし ―";
+        head.appendChild(no); head.appendChild(date);
+        var snip = document.createElement("div"); snip.className = "snip"; snip.textContent = d ? (d.snippet || "") : "";
+        b.appendChild(head); b.appendChild(snip);
+        if (mode === "load" && (!d || !byId[d.scene])) b.disabled = true;
+        b.addEventListener("click", function () { slotClicked(mode, i + 1, d); });
+        list.appendChild(b);
+      });
+      $("slots-screen").classList.remove("hidden");
+      var first = list.querySelector(".slot:not(:disabled)"); if (first) first.focus();
+    });
+  }
+  function closeSlots() { slotsReturn = null; $("slots-screen").classList.add("hidden"); }
+  function slotClicked(mode, n, d) {
+    if (mode === "save") {
+      if (d && !confirm("No." + n + " に上書きしますか？")) return;
+      var s = byId[st.scene], l = s && s.lines[Math.min(st.line, s.lines.length - 1)];
+      var data = { scene: st.scene, line: st.line, time: Date.now(),
+        snippet: l ? (l.speaker ? l.speaker + "「" + l.text + "」" : l.text).replace(/\s+/g, " ").slice(0, 60) : "" };
+      storeSet("slot" + n, JSON.stringify(data))
+        .then(function () { closeSlots(); toast("No." + n + " にセーブしました"); })
+        .catch(function () { toast("セーブできませんでした"); });
+    } else {
+      closeSlots();
+      var s2 = byId[d.scene];
+      startScene(d.scene, Math.min(d.line, Math.max(0, s2.lines.length - 1)));
+      toast("No." + n + " をロードしました");
+    }
   }
 
+  // ---- 全画面 ----
+  function toggleFullscreen() {
+    if (NATIVE) { window.novelFullscreen(); return; }
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen();
+    } catch (e) {}
+  }
+
+  function stop(fn) { return function (e) { e.stopPropagation(); fn(); }; }
   $("btn-start").addEventListener("click", function () { startScene(G.start, 0); });
-  $("btn-continue").addEventListener("click", load);
+  $("btn-continue").addEventListener("click", function () { openSlots("load"); });
+  $("btn-quit").addEventListener("click", function () { if (confirm("ゲームを終了しますか？")) window.novelQuit(); });
   $("btn-end-title").addEventListener("click", toTitle);
-  $("btn-totitle").addEventListener("click", function (e) { e.stopPropagation(); if (confirm("タイトルに戻りますか？")) toTitle(); });
-  $("btn-save").addEventListener("click", function (e) { e.stopPropagation(); save(); });
-  $("btn-load").addEventListener("click", function (e) { e.stopPropagation(); load(); });
+  $("btn-totitle").addEventListener("click", stop(function () { if (confirm("タイトルに戻りますか？")) toTitle(); }));
+  $("btn-save").addEventListener("click", stop(function () { openSlots("save"); }));
+  $("btn-load").addEventListener("click", stop(function () { openSlots("load"); }));
+  $("btn-fs").addEventListener("click", stop(toggleFullscreen));
+  $("btn-fs-title").addEventListener("click", toggleFullscreen);
+  $("btn-slots-back").addEventListener("click", closeSlots);
   $("play-screen").addEventListener("click", function (e) {
     if (e.target.closest("#topbar") || e.target.closest("#choices")) return;
     advance();
   });
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Enter" || e.key === " ") {
+    if (e.key === "F11") { e.preventDefault(); toggleFullscreen(); return; }
+    if (e.key === "Escape" && slotsReturn) { closeSlots(); return; }
+    if (NATIVE && (e.ctrlKey || e.metaKey || e.key === "F5" || e.key === "F3" || e.key === "F7")) { e.preventDefault(); return; }
+    if ((e.key === "Enter" || e.key === " ") && !slotsReturn && !$("play-screen").classList.contains("hidden") && !inChoice) {
       if (document.activeElement && document.activeElement.tagName === "BUTTON") document.activeElement.blur();
       e.preventDefault(); advance();
     }
   });
+  if (NATIVE) document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
 
   if (O.startScene) startScene(O.startScene, 0); else toTitle();
 })();
@@ -433,7 +558,9 @@ function emptyProject() {
 function normalize(p) {
   if (!p || !Array.isArray(p.scenes)) throw new Error("プロジェクトファイルの形式が正しくありません");
   p.title = p.title || "無題のゲーム";
-  p.settings = Object.assign({ author: "", speed: 35, bg: "#1b1d2a", fg: "#f5f5f5", accent: "#c8546a" }, p.settings || {});
+  p.id = /^[A-Za-z0-9]{6,32}$/.test(p.id || "") ? p.id : "g" + uid().slice(1) + uid().slice(1);
+  p.settings = Object.assign({ author: "", speed: 35, bg: "#1b1d2a", fg: "#f5f5f5", accent: "#c8546a",
+    icon: "", width: 1280, height: 720, version: "1.0", contact: "" }, p.settings || {});
   p.scenes.forEach((s) => {
     s.id = s.id || uid(); s.name = s.name || "シーン"; s.bg = s.bg || "";
     s.lines = Array.isArray(s.lines) ? s.lines : [];
@@ -449,7 +576,7 @@ function normalize(p) {
 let project;
 let currentId;
 try { project = normalize(JSON.parse(localStorage.getItem(STORAGE_KEY))); }
-catch (e) { project = sampleProject(); }
+catch (e) { project = normalize(sampleProject()); }
 currentId = project.start;
 
 const sceneById = (id) => project.scenes.find((s) => s.id === id);
@@ -707,7 +834,8 @@ function escHtml(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;"
 function safeJson(v) { return JSON.stringify(v).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029"); }
 function buildGameHTML(opts) {
   const data = {
-    title: project.title, start: project.start, settings: project.settings,
+    title: project.title, id: project.id, start: project.start,
+    settings: Object.assign({}, project.settings, { icon: undefined }),
     scenes: project.scenes.map((s) => ({
       id: s.id, name: s.name, bg: s.bg, end: s.end, next: s.next, endTitle: s.endTitle,
       lines: s.lines.filter((l) => l.text.trim() || l.speaker.trim()),
@@ -721,6 +849,212 @@ function buildGameHTML(opts) {
     $("tpl-body").textContent +
     "\n<script>var GAME=" + safeJson(data) + ";var OPTS=" + safeJson(opts || {}) + ";<\/script>\n" +
     "<script>" + $("tpl-js").textContent + "<\/script>\n</body>\n</html>\n";
+}
+
+// ---------- Windows用 EXE 出力 ----------
+// runtime/player-stub.js に入っている novel-player.exe（ゲーム再生用ランタイム）の
+// 末尾にゲームデータを付け足し、アイコン枠を差し替えて「ゲーム名.exe」を作ります。
+const DEFAULT_ICON_SVG = "data:image/svg+xml," + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
+  '<stop offset="0" stop-color="#4f6bed"/><stop offset="1" stop-color="#8b5cf0"/></linearGradient></defs>' +
+  '<rect x="8" y="8" width="240" height="240" rx="44" fill="url(#g)"/><rect x="52" y="70" width="72" height="120" rx="10" fill="#fff"/>' +
+  '<rect x="132" y="70" width="72" height="120" rx="10" fill="#fff"/></svg>');
+
+function loadImage(src) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = () => rej(new Error("画像の形式に対応していません"));
+    img.src = src;
+  });
+}
+function readAsDataURL(file) {
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(file); });
+}
+// 画像を 256x256 の PNG（余白は透明、中央寄せ）に変換
+async function imageToIconDataURL(file) {
+  const img = await loadImage(await readAsDataURL(file));
+  const c = document.createElement("canvas"); c.width = c.height = 256;
+  const ctx = c.getContext("2d");
+  const sc = Math.min(256 / img.width, 256 / img.height);
+  const w = img.width * sc, h = img.height * sc;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, (256 - w) / 2, (256 - h) / 2, w, h);
+  return c.toDataURL("image/png");
+}
+
+function loadPlayerRuntime() {
+  if (window.NOVEL_PLAYER) return Promise.resolve(window.NOVEL_PLAYER);
+  return new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = "runtime/player-stub.js";
+    const fail = () => rej(new Error("ランタイム（runtime/player-stub.js）が見つかりません。\n" +
+      "editor.html と同じ場所に runtime フォルダがあることを確認してください。\n" +
+      "（editor.html だけを別の場所にコピーした場合は、フォルダごと移動してください）"));
+    s.onload = () => (window.NOVEL_PLAYER ? res(window.NOVEL_PLAYER) : fail());
+    s.onerror = fail;
+    document.head.append(s);
+  });
+}
+
+const textEnc = new TextEncoder();
+function b64ToBytes(b64) {
+  const bin = atob(b64), u = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  return u;
+}
+function concatBytes(parts) {
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let o = 0; for (const p of parts) { out.set(p, o); o += p.length; }
+  return out;
+}
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+  return t;
+})();
+function crc32(u8) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < u8.length; i++) c = CRC_TABLE[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function indexOfBytes(hay, needle, from = 0) {
+  const f = needle[0];
+  outer: for (let i = hay.indexOf(f, from); i !== -1 && i <= hay.length - needle.length; i = hay.indexOf(f, i + 1)) {
+    for (let j = 1; j < needle.length; j++) if (hay[i + j] !== needle[j]) continue outer;
+    return i;
+  }
+  return -1;
+}
+function pngChunk(type, data) {
+  const out = new Uint8Array(12 + data.length), dv = new DataView(out.buffer);
+  dv.setUint32(0, data.length);
+  out.set(textEnc.encode(type), 4); out.set(data, 8);
+  dv.setUint32(8 + data.length, crc32(out.subarray(4, 8 + data.length)));
+  return out;
+}
+const PNG_SIG = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+
+// EXE 内のアイコン枠（固定サイズの PNG）を新しい PNG に置き換える
+function patchIcon(exe, png, rt) {
+  const marker = textEnc.encode(rt.iconSlotMarker);
+  const m = indexOfBytes(exe, marker);
+  if (m < 0) throw new Error("ランタイム内にアイコン枠が見つかりません");
+  let start = -1;
+  for (let i = m; i >= 0 && m - i < rt.iconSlotSize; i--) {
+    if (exe[i] === 0x89 && indexOfBytes(exe.subarray(i, i + 8), PNG_SIG) === 0) { start = i; break; }
+  }
+  if (start < 0) throw new Error("アイコン枠の位置を特定できません");
+  if (textEnc.encode("IEND").some((b, i) => png[png.length - 8 + i] !== b)) throw new Error("PNG の形式が正しくありません");
+  const body = png.subarray(0, png.length - 12);
+  const padLen = rt.iconSlotSize - body.length - 24;
+  if (padLen < marker.length) throw new Error("アイコン画像のデータが大きすぎます。もっと単純な画像を使ってください");
+  const pad = new Uint8Array(padLen); pad.set(marker);
+  const slot = concatBytes([body, pngChunk("npAd", pad), pngChunk("IEND", new Uint8Array(0))]);
+  exe.set(slot, start);
+}
+
+function dosDateTime(d) {
+  return {
+    time: (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1),
+    date: ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate(),
+  };
+}
+// 無圧縮 ZIP（ファイル名は UTF-8）
+function makeZip(files) {
+  const { time, date } = dosDateTime(new Date());
+  const locals = [], centrals = [];
+  let offset = 0;
+  for (const f of files) {
+    const name = textEnc.encode(f.name), crc = crc32(f.data);
+    const lh = new Uint8Array(30 + name.length), l = new DataView(lh.buffer);
+    l.setUint32(0, 0x04034b50, true); l.setUint16(4, 20, true); l.setUint16(6, 0x0800, true); l.setUint16(8, 0, true);
+    l.setUint16(10, time, true); l.setUint16(12, date, true); l.setUint32(14, crc, true);
+    l.setUint32(18, f.data.length, true); l.setUint32(22, f.data.length, true); l.setUint16(26, name.length, true);
+    lh.set(name, 30);
+    const ch = new Uint8Array(46 + name.length), c = new DataView(ch.buffer);
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true);
+    c.setUint16(12, time, true); c.setUint16(14, date, true); c.setUint32(16, crc, true);
+    c.setUint32(20, f.data.length, true); c.setUint32(24, f.data.length, true); c.setUint16(28, name.length, true);
+    c.setUint32(42, offset, true); ch.set(name, 46);
+    locals.push(lh, f.data); centrals.push(ch);
+    offset += lh.length + f.data.length;
+  }
+  const cd = concatBytes(centrals);
+  const end = new Uint8Array(22), e = new DataView(end.buffer);
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true);
+  e.setUint32(12, cd.length, true); e.setUint32(16, offset, true);
+  return concatBytes([...locals, cd, end]);
+}
+
+// player/storage.go の folderName と同じ規則
+function saveFolderName() {
+  let name = project.title.replace(/[\\/:*?"<>|\x00-\x1f]/g, "_").trim().replace(/[. ]+$/, "");
+  name = Array.from(name).slice(0, 40).join("") || "game";
+  const id = project.id.replace(/[^A-Za-z0-9_-]/g, "");
+  return id ? name + "_" + id : name;
+}
+function windowsText(s) { return concatBytes([new Uint8Array([0xEF, 0xBB, 0xBF]), textEnc.encode(s.replace(/\r?\n/g, "\r\n"))]); }
+
+function readmeText(exeName) {
+  const S = project.settings;
+  return [
+    `『${project.title}』` + (S.version ? ` Ver.${S.version}` : ""),
+    S.author ? `作者：${S.author}` : "",
+    "",
+    "■ 起動方法",
+    `　「${exeName}」をダブルクリックすると起動します。`,
+    "　※ ZIPファイルの中から直接起動せず、必ず展開（解凍）してから起動してください。",
+    "　※「WindowsによってPCが保護されました」と表示された場合は、",
+    "　　「詳細情報」→「実行」を押すと起動できます。",
+    "",
+    "■ 動作環境",
+    "　Windows 10 / 11（64bit）",
+    "　Microsoft Edge WebView2 ランタイム（Windows 10 / 11 には通常インストールされています）",
+    "",
+    "■ 操作方法",
+    "　クリック / Enter / スペース …… 文章を進める",
+    "　F11 …………………………………… 全画面表示の切り替え",
+    "　画面右上のボタン ……………… セーブ・ロード・全画面・タイトルへ戻る",
+    "",
+    "■ セーブデータの保存場所",
+    `　%APPDATA%\\NovelGames\\${saveFolderName()}\\`,
+    "",
+    "■ アンインストール",
+    "　フォルダごと削除してください。セーブデータも削除する場合は、上記のフォルダも削除してください。",
+    "",
+    ...(S.contact ? ["■ お問い合わせ", "　" + S.contact, ""] : []),
+    "■ ライセンス",
+    "　本ゲームが使用しているオープンソースソフトウェアのライセンスは",
+    "　THIRD_PARTY_LICENSES.txt をご覧ください。",
+    "",
+  ].filter((l, i) => l !== "" || i !== 1).join("\n");
+}
+
+async function buildExeZip() {
+  const rt = await loadPlayerRuntime();
+  const exe = b64ToBytes(rt.exe);
+  if (project.settings.icon) {
+    const png = new Uint8Array(await (await fetch(project.settings.icon)).arrayBuffer());
+    patchIcon(exe, png, rt);
+  }
+  const payload = textEnc.encode(JSON.stringify({
+    title: project.title, id: project.id,
+    width: project.settings.width, height: project.settings.height,
+    html: buildGameHTML({}),
+  }));
+  const trailer = new Uint8Array(16), dv = new DataView(trailer.buffer);
+  dv.setUint32(0, payload.length, true); dv.setUint32(4, Math.floor(payload.length / 2 ** 32), true);
+  trailer.set(textEnc.encode("NVLPKG01"), 8);
+  const game = concatBytes([exe, payload, trailer]);
+
+  const base = fileSafe(project.title);
+  const exeName = base + ".exe";
+  return makeZip([
+    { name: `${base}/${exeName}`, data: game },
+    { name: `${base}/はじめにお読みください.txt`, data: windowsText(readmeText(exeName)) },
+    { name: `${base}/THIRD_PARTY_LICENSES.txt`, data: windowsText(rt.licenses) },
+  ]);
 }
 
 // ---------- テストプレイ ----------
@@ -743,16 +1077,61 @@ function download(name, text, type) {
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
-function fileSafe(s) { return (s || "game").replace(/[\\/:*?"<>|]/g, "_").trim() || "game"; }
+// 保存ダイアログで保存（Chrome / Edge）。使えない場合は通常のダウンロード。
+// data には中身、または中身を作る async 関数を渡す（ダイアログを先に開くため）。
+// キャンセルされたら false を返す。
+async function saveFile(name, data, type, description, ext) {
+  const make = async () => (typeof data === "function" ? await data() : data);
+  if (window.showSaveFilePicker) {
+    let handle = null;
+    try {
+      handle = await window.showSaveFilePicker({ suggestedName: name, types: [{ description, accept: { [type]: [ext] } }] });
+    } catch (e) {
+      if (e.name === "AbortError") return false;
+    }
+    if (handle) {
+      const content = await make();
+      const w = await handle.createWritable();
+      await w.write(new Blob([content], { type }));
+      await w.close();
+      return true;
+    }
+  }
+  download(name, await make(), type);
+  return true;
+}
+function fileSafe(s) { return (s || "game").replace(/[\\/:*?"<>|\x00-\x1f]/g, "_").trim().replace(/[. ]+$/, "") || "game"; }
 
 $("btn-export").onclick = () => {
-  const all = project.scenes.flatMap((s) => sceneProblems(s).map((p) => `・${s.name}：${p}`));
-  if (all.length && !confirm("次の問題があります。このまま出力しますか？\n（未設定の移動先はエンディング扱いになります）\n\n" + all.join("\n"))) return;
-  download(fileSafe(project.title) + ".html", buildGameHTML({}), "text/html");
-  toast("ゲームを出力しました。ダウンロードしたHTMLファイルをダブルクリックで遊べます");
+  const all = project.scenes.flatMap((s) => sceneProblems(s).map((p) => `${s.name}：${p}`));
+  const box = $("export-problems"); box.innerHTML = "";
+  if (all.length) box.append(el("div", { class: "problem" }, "⚠ 次の問題があります（未設定の移動先はエンディング扱いになります）", el("br"), ...all.flatMap((t) => [el("br"), "・" + t])));
+  $("export-status").textContent = "";
+  $("export-modal").classList.remove("hidden");
 };
-$("btn-save").onclick = () => {
-  download(fileSafe(project.title) + ".novel.json", JSON.stringify(project, null, 2), "application/json");
+$("btn-export-close").onclick = () => $("export-modal").classList.add("hidden");
+$("btn-export-html").onclick = async () => {
+  if (!await saveFile(fileSafe(project.title) + ".html", buildGameHTML({}), "text/html", "HTMLファイル", ".html")) return;
+  $("export-modal").classList.add("hidden");
+  toast("HTMLを出力しました。ダブルクリックでブラウザから遊べます");
+};
+$("btn-export-exe").onclick = async () => {
+  const btn = $("btn-export-exe"), status = $("export-status");
+  btn.disabled = true;
+  status.className = "hint progress"; status.textContent = "EXEを作成しています…";
+  try {
+    const ok = await saveFile(fileSafe(project.title) + ".zip", buildExeZip, "application/zip", "ZIPファイル", ".zip");
+    status.className = "hint"; status.textContent = "";
+    if (!ok) return;
+    $("export-modal").classList.add("hidden");
+    toast("Windows用ゲーム（ZIP）を出力しました");
+  } catch (err) {
+    status.className = "hint"; status.textContent = "";
+    alert("EXEを出力できませんでした。\n\n" + err.message);
+  } finally { btn.disabled = false; }
+};
+$("btn-save").onclick = async () => {
+  if (!await saveFile(fileSafe(project.title) + ".novel.json", JSON.stringify(project, null, 2), "application/json", "プロジェクトファイル", ".json")) return;
   toast("プロジェクトを保存しました");
 };
 $("btn-open").onclick = () => $("file-input").click();
@@ -768,17 +1147,38 @@ $("file-input").onchange = async (e) => {
 $("btn-new").onclick = () => {
   const choice = prompt("新規作成します。現在の内容は消えます（必要なら先に「プロジェクト保存」してください）。\n\n1 = 空のプロジェクト\n2 = サンプルのお話\n\n番号を入力してください", "1");
   if (choice !== "1" && choice !== "2") return;
-  project = choice === "2" ? sampleProject() : emptyProject();
+  project = normalize(choice === "2" ? sampleProject() : emptyProject());
   currentId = project.start; changed(); renderAll();
 };
 $("btn-add-scene").onclick = () => { const s = newScene(); currentId = s.id; renderAll(); };
 $("project-title").oninput = (e) => { project.title = e.target.value; changed(false); };
 
 // ---------- 設定 ----------
-const settingInputs = { author: "set-author", speed: "set-speed", bg: "set-bg", fg: "set-fg", accent: "set-accent" };
+const settingInputs = { author: "set-author", speed: "set-speed", bg: "set-bg", fg: "set-fg", accent: "set-accent", version: "set-version", contact: "set-contact" };
+function renderIconPreview() {
+  $("set-icon-preview").style.backgroundImage = "url(" + (project.settings.icon || DEFAULT_ICON_SVG) + ")";
+}
 $("btn-settings").onclick = () => {
   for (const [k, id] of Object.entries(settingInputs)) $(id).value = project.settings[k];
+  const size = project.settings.width + "x" + project.settings.height;
+  if (![...$("set-size").options].some((o) => o.value === size)) $("set-size").append(el("option", { value: size }, size.replace("x", " × ")));
+  $("set-size").value = size;
+  renderIconPreview();
   $("settings-modal").classList.remove("hidden");
+};
+$("set-size").onchange = (e) => {
+  const [w, h] = e.target.value.split("x").map(Number);
+  project.settings.width = w; project.settings.height = h; changed(false);
+};
+$("btn-icon-pick").onclick = () => $("icon-input").click();
+$("btn-icon-reset").onclick = () => { project.settings.icon = ""; changed(false); renderIconPreview(); };
+$("icon-input").onchange = async (e) => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  try {
+    project.settings.icon = await imageToIconDataURL(f);
+    changed(false); renderIconPreview();
+  } catch (err) { alert("画像を読み込めませんでした：" + err.message); }
 };
 for (const [k, id] of Object.entries(settingInputs)) {
   $(id).addEventListener("input", (e) => {
