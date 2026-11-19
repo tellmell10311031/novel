@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ノベルゲームメーカー</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --panel: #fff; --line: #dde0e6; --text: #222; --muted: #6b7280;
+    --accent: #4f6bed; --accent-weak: #e8ecff; --danger: #d64545; --ok: #2e9d5b; --warn: #c98a00;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif; background: var(--bg); color: var(--text); font-size: 14px; display: flex; flex-direction: column; }
+  button { font: inherit; cursor: pointer; border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: 6px 12px; color: var(--text); }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.primary:hover { filter: brightness(1.08); }
+  button.danger { color: var(--danger); }
+  button.small { padding: 3px 8px; font-size: 12px; }
+  button.icon { padding: 3px 7px; min-width: 28px; }
+  input[type=text], input[type=number], textarea, select { font: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; background: #fff; color: var(--text); width: 100%; }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent-weak); border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 64px; line-height: 1.6; }
+
+  header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: #fff; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header .logo { font-weight: 700; font-size: 16px; margin-right: 8px; white-space: nowrap; }
+  header .title-input { max-width: 280px; }
+  header .spacer { flex: 1; }
+  header .status { color: var(--muted); font-size: 12px; }
+
+  .layout { flex: 1; display: flex; min-height: 0; }
+  aside { width: 290px; background: #fff; border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  aside .aside-head { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid var(--line); }
+  aside .aside-head h2 { font-size: 14px; margin: 0; }
+  .scene-list { overflow-y: auto; flex: 1; padding: 8px; }
+  .scene-item { padding: 8px 10px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; margin-bottom: 4px; }
+  .scene-item:hover { background: var(--bg); }
+  .scene-item.active { background: var(--accent-weak); border-color: var(--accent); }
+  .scene-item .name { font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .scene-item .flow { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.5; word-break: break-all; }
+  .scene-item .flow .bad { color: var(--danger); }
+  .badge { font-size: 10px; padding: 1px 6px; border-radius: 10px; background: var(--ok); color: #fff; font-weight: 600; }
+  .badge.end { background: #8b5cf6; }
+  .badge.warn { background: var(--warn); }
+  .aside-foot { border-top: 1px solid var(--line); padding: 10px 12px; font-size: 12px; color: var(--muted); }
+
+  main { flex: 1; overflow-y: auto; padding: 20px 28px 80px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; max-width: 860px; }
+  .card h3 { margin: 0 0 12px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .card h3 .num { background: var(--accent); color: #fff; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
+  .hint { color: var(--muted); font-size: 12px; margin: -6px 0 12px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .row > label { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .field { margin-bottom: 10px; }
+  .field > label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+
+  .line-card { display: grid; grid-template-columns: 34px 160px 1fr auto; gap: 8px; align-items: start; padding: 10px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px; background: #fafbfc; }
+  .line-card .idx { color: var(--muted); font-size: 12px; padding-top: 8px; text-align: center; }
+  .line-card .ops { display: flex; flex-direction: column; gap: 4px; }
+  .choice-card { display: grid; grid-template-columns: 1fr 230px auto; gap: 8px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px; background: #fafbfc; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-bottom: 12px; }
+  .seg button { border: none; border-radius: 0; padding: 8px 16px; border-right: 1px solid var(--line); }
+  .seg button:last-child { border-right: none; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .empty { color: var(--muted); padding: 12px; text-align: center; border: 1px dashed var(--line); border-radius: 8px; margin-bottom: 8px; }
+  .problems { max-width: 860px; margin-bottom: 16px; }
+  .problem { background: #fff7e6; border: 1px solid #f3d38b; color: #7a5300; padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; font-size: 13px; }
+
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 10; }
+  .modal { background: #fff; border-radius: 12px; padding: 16px; width: min(1000px, 94vw); max-height: 94vh; display: flex; flex-direction: column; gap: 10px; }
+  .modal.narrow { width: min(560px, 94vw); }
+  .modal-head { display: flex; justify-content: space-between; align-items: center; }
+  .modal-head h2 { margin: 0; font-size: 16px; }
+  .preview-frame { width: 100%; aspect-ratio: 16 / 9; border: none; border-radius: 8px; background: #000; }
+  .hidden { display: none !important; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #222; color: #fff; padding: 10px 18px; border-radius: 8px; z-index: 20; font-size: 13px; }
+  @media (max-width: 800px) {
+    .layout { flex-direction: column; }
+    aside { width: 100%; max-height: 240px; border-right: none; border-bottom: 1px solid var(--line); }
+    main { padding: 16px; }
+    .line-card { grid-template-columns: 1fr; }
+    .line-card .ops { flex-direction: row; }
+    .choice-card { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">📖 ノベルゲームメーカー</span>
+  <input type="text" id="project-title" class="title-input" placeholder="ゲームのタイトル">
+  <button id="btn-settings" title="文字の速さ・色などの設定">⚙ 設定</button>
+  <span class="spacer"></span>
+  <span class="status" id="save-status"></span>
+  <button id="btn-new">新規作成</button>
+  <button id="btn-open">開く</button>
+  <button id="btn-save">プロジェクト保存</button>
+  <button id="btn-play">▶ テストプレイ</button>
+  <button id="btn-export" class="primary">⬇ ゲームを出力</button>
+  <input type="file" id="file-input" accept=".json,application/json" class="hidden">
+</header>
+
+<div class="layout">
+  <aside>
+    <div class="aside-head">
+      <h2>シーン一覧</h2>
+      <button class="small primary" id="btn-add-scene">＋ シーン追加</button>
+    </div>
+    <div class="scene-list" id="scene-list"></div>
+    <div class="aside-foot">
+      <span class="badge">START</span> = ゲーム開始シーン　<span class="badge end">END</span> = エンディング<br>
+      編集内容はブラウザに自動保存されます。
+    </div>
+  </aside>
+  <main id="main"></main>
+</div>
+
+<!-- テストプレイ -->
+<div class="modal-bg hidden" id="preview-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="preview-title">テストプレイ</h2>
+      <div class="row">
+        <button id="btn-preview-restart">最初から</button>
+        <button id="btn-preview-close">閉じる</button>
+      </div>
+    </div>
+    <iframe class="preview-frame" id="preview-frame" sandbox="allow-scripts"></iframe>
+    <div class="hint" style="margin:0">クリック / Enter / スペースで文章を進めます。</div>
+  </div>
+</div>
+
+<!-- 設定 -->
+<div class="modal-bg hidden" id="settings-modal">
+  <div class="modal narrow">
+    <div class="modal-head"><h2>ゲームの設定</h2><button id="btn-settings-close">閉じる</button></div>
+    <div class="field"><label>作者名（タイトル画面に表示）</label><input type="text" id="set-author"></div>
+    <div class="field"><label>文字の表示速度（1文字あたりのミリ秒・0で一瞬で表示）</label><input type="number" id="set-speed" min="0" max="200"></div>
+    <div class="field"><label>標準の背景色</label><input type="color" id="set-bg"></div>
+    <div class="field"><label>文字色</label><input type="color" id="set-fg"></div>
+    <div class="field"><label>アクセント色（選択肢・名前欄など）</label><input type="color" id="set-accent"></div>
+  </div>
+</div>
+
+<!-- 一括入力 -->
+<div class="modal-bg hidden" id="bulk-modal">
+  <div class="modal narrow">
+    <div class="modal-head"><h2>テキストをまとめて追加</h2><button id="btn-bulk-close">閉じる</button></div>
+    <div class="hint" style="margin:0">
+      1行が1メッセージになります。<br>
+      「名前：セリフ」または「名前「セリフ」」と書くと、名前欄つきのメッセージになります。<br>
+      メッセージ内で改行したいときは <code>\n</code> と書いてください。
+    </div>
+    <textarea id="bulk-text" rows="12" placeholder="朝、目が覚めると見知らぬ部屋にいた。&#10;ユウキ：ここは……どこだ？&#10;アオイ「やっと起きたのね」"></textarea>
+    <div class="row" style="justify-content:flex-end"><button class="primary" id="btn-bulk-add">追加する</button></div>
+  </div>
+</div>
+
+<!-- ================================================================
+     ここから下は「出力されるゲーム」の中身（テンプレート）です。
+     テストプレイと出力の両方で同じものを使います。
+     ================================================================ -->
+<script type="text/plain" id="tpl-css">
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#000;overflow:hidden}
+body{font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho","MS PMincho",serif;color:var(--fg);user-select:none}
+#game{position:fixed;inset:0;background:var(--bg);transition:background .6s}
+.screen{position:absolute;inset:0}
+.hidden{display:none!important}
+#title-screen,#end-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:20px}
+#title-screen h1{font-size:clamp(28px,6vw,64px);margin:0 0 4px;letter-spacing:.08em;text-shadow:0 2px 12px rgba(0,0,0,.4)}
+#t-author{opacity:.75;margin-bottom:24px}
+#end-screen h2{font-size:clamp(28px,5vw,56px);margin:0;letter-spacing:.2em}
+#end-screen .end-name{font-size:clamp(16px,2.6vw,26px);opacity:.85}
+.menu-btn{font:inherit;font-size:18px;min-width:220px;padding:12px 24px;color:var(--fg);background:rgba(0,0,0,.35);border:1px solid var(--accent);border-radius:6px;cursor:pointer;transition:.15s}
+.menu-btn:hover{background:var(--accent);color:#fff}
+.menu-btn:disabled{opacity:.35;cursor:default;background:rgba(0,0,0,.35);color:var(--fg)}
+#topbar{position:absolute;top:10px;right:12px;display:flex;gap:8px;z-index:3}
+#topbar button{font:inherit;font-size:13px;padding:5px 12px;color:var(--fg);background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.25);border-radius:4px;cursor:pointer}
+#topbar button:hover{border-color:var(--accent)}
+#scene-name{position:absolute;top:12px;left:16px;font-size:13px;opacity:.6}
+#msgbox{position:absolute;left:3%;right:3%;bottom:4%;min-height:26%;background:rgba(0,0,0,.62);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:clamp(14px,2.5vw,26px) clamp(18px,3vw,34px);cursor:pointer}
+#speaker{position:absolute;top:-18px;left:22px;background:var(--accent);color:#fff;padding:4px 18px;border-radius:4px;font-size:clamp(14px,1.8vw,18px);font-weight:bold}
+#text{font-size:clamp(16px,2.3vw,24px);line-height:1.8;white-space:pre-wrap;word-break:break-word}
+#next-ind{position:absolute;right:20px;bottom:12px;animation:blink 1s infinite;font-size:14px}
+@keyframes blink{50%{opacity:0}}
+#choices{position:absolute;left:0;right:0;top:8%;bottom:34%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:2;padding:0 10%}
+#choices button{font:inherit;font-size:clamp(15px,2vw,20px);width:min(640px,100%);padding:14px 20px;color:var(--fg);background:rgba(0,0,0,.7);border:1px solid var(--accent);border-radius:8px;cursor:pointer;transition:.15s}
+#choices button:hover,#choices button:focus{background:var(--accent);color:#fff;outline:none}
+#toast{position:absolute;top:50px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;padding:8px 18px;border-radius:6px;font-size:14px;z-index:5}
+</script>
+
+<script type="text/plain" id="tpl-body">
+<div id="game">
+  <div id="title-screen" class="screen">
+    <h1 id="t-title"></h1>
+    <div id="t-author"></div>
+    <button class="menu-btn" id="btn-start">はじめから</button>
+    <button class="menu-btn" id="btn-continue">つづきから</button>
+  </div>
+  <div id="play-screen" class="screen hidden">
+    <div id="scene-name"></div>
+    <div id="topbar">
+      <button id="btn-save">セーブ</button>
+      <button id="btn-load">ロード</button>
+      <button id="btn-totitle">タイトル</button>
+    </div>
+    <div id="choices" class="hidden"></div>
+    <div id="msgbox">
+      <div id="speaker" class="hidden"></div>
+      <div id="text"></div>
+      <div id="next-ind" class="hidden">▼</div>
+    </div>
+  </div>
+  <div id="end-screen" class="screen hidden">
+    <h2>END</h2>
+    <div class="end-name" id="end-name"></div>
+    <button class="menu-btn" id="btn-end-title" style="margin-top:20px">タイトルへ戻る</button>
+  </div>
+  <div id="toast" class="hidden"></div>
+</div>
+</script>
+
+<script type="text/plain" id="tpl-js">
+(function () {
+  "use strict";
+  var G = GAME, O = OPTS || {};
+  var S = G.settings || {};
+  var byId = {};
+  G.scenes.forEach(function (s) { byId[s.id] = s; });
+  var SAVE_KEY = "novel-save:" + (G.title || "game");
+  var st = { scene: null, line: 0 };
+  var typing = false, timer = null, chars = [], shown = 0, inChoice = false;
+
+  function $(id) { return document.getElementById(id); }
+  function show(id) {
+    ["title-screen", "play-screen", "end-screen"].forEach(function (n) { $(n).classList.toggle("hidden", n !== id); });
+  }
+  function toast(msg) {
+    var t = $("toast"); t.textContent = msg; t.classList.remove("hidden");
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.add("hidden"); }, 1500);
+  }
+  function storage() { try { return window.localStorage; } catch (e) { return null; } }
+  function readSave() { try { var s = storage(); return s && JSON.parse(s.getItem(SAVE_KEY)); } catch (e) { return null; } }
+
+  var root = document.documentElement.style;
+  root.setProperty("--bg", S.bg || "#1b1d2a");
+  root.setProperty("--fg", S.fg || "#f5f5f5");
+  root.setProperty("--accent", S.accent || "#c8546a");
+  document.title = G.title || "ノベルゲーム";
+
+  function setBg(scene) { $("game").style.background = (scene && scene.bg) ? scene.bg : ""; }
+
+  function toTitle() {
+    clearInterval(timer); setBg(null);
+    $("t-title").textContent = G.title || "無題のゲーム";
+    $("t-author").textContent = S.author ? "作：" + S.author : "";
+    $("btn-continue").disabled = !readSave();
+    show("title-screen");
+  }
+
+  function startScene(id, line, hops) {
+    hops = hops || 0;
+    var s = byId[id];
+    if (!s || hops > 200) { ending(""); return; }
+    st.scene = id; st.line = line || 0;
+    inChoice = false;
+    $("choices").classList.add("hidden"); $("choices").innerHTML = "";
+    $("scene-name").textContent = O.debug ? "[" + (s.name || "") + "]" : "";
+    setBg(s);
+    show("play-screen");
+    if (!s.lines.length) { $("speaker").classList.add("hidden"); $("text").textContent = ""; sceneEnd(s, hops); return; }
+    showLine();
+  }
+
+  function showLine() {
+    var s = byId[st.scene];
+    if (st.line >= s.lines.length) { sceneEnd(s, 0); return; }
+    var l = s.lines[st.line];
+    var sp = $("speaker");
+    sp.textContent = l.speaker || "";
+    sp.classList.toggle("hidden", !l.speaker);
+    typeText(l.text || "");
+  }
+
+  function typeText(t) {
+    clearInterval(timer);
+    chars = Array.from(t); shown = 0;
+    $("text").textContent = "";
+    $("next-ind").classList.add("hidden");
+    var speed = (S.speed === 0 || S.speed) ? Number(S.speed) : 35;
+    if (speed <= 0 || !chars.length) { finishTyping(); return; }
+    typing = true;
+    timer = setInterval(function () {
+      shown++;
+      $("text").textContent = chars.slice(0, shown).join("");
+      if (shown >= chars.length) finishTyping();
+    }, speed);
+  }
+  function finishTyping() {
+    clearInterval(timer); typing = false;
+    $("text").textContent = chars.join("");
+    $("next-ind").classList.remove("hidden");
+  }
+
+  function advance() {
+    if (inChoice || $("play-screen").classList.contains("hidden")) return;
+    if (typing) { finishTyping(); return; }
+    st.line++;
+    showLine();
+  }
+
+  function sceneEnd(s, hops) {
+    var valid = (s.choices || []).filter(function (c) { return c.text; });
+    if (s.end === "choice" && valid.length) { showChoices(valid); return; }
+    if (s.end === "next" && s.next && byId[s.next]) { startScene(s.next, 0, (hops || 0) + 1); return; }
+    ending(s.endTitle || "");
+  }
+
+  function showChoices(list) {
+    inChoice = true;
+    $("next-ind").classList.add("hidden");
+    var box = $("choices"); box.innerHTML = "";
+    list.forEach(function (c) {
+      var b = document.createElement("button");
+      b.textContent = c.text;
+      b.addEventListener("click", function (e) { e.stopPropagation(); startScene(c.target, 0); });
+      box.appendChild(b);
+    });
+    box.classList.remove("hidden");
+  }
+
+  function ending(name) {
+    clearInterval(timer); inChoice = false;
+    $("end-name").textContent = name || "";
+    show("end-screen");
+  }
+
+  function save() {
+    var s = storage();
+    try { s.setItem(SAVE_KEY, JSON.stringify({ scene: st.scene, line: st.line })); toast("セーブしました"); }
+    catch (e) { toast("この環境ではセーブできません"); }
+  }
+  function load() {
+    var d = readSave();
+    if (!d || !byId[d.scene]) { toast("セーブデータがありません"); return; }
+    startScene(d.scene, Math.min(d.line, Math.max(0, byId[d.scene].lines.length - 1)));
+    toast("ロードしました");
+  }
+
+  $("btn-start").addEventListener("click", function () { startScene(G.start, 0); });
+  $("btn-continue").addEventListener("click", load);
+  $("btn-end-title").addEventListener("click", toTitle);
+  $("btn-totitle").addEventListener("click", function (e) { e.stopPropagation(); if (confirm("タイトルに戻りますか？")) toTitle(); });
+  $("btn-save").addEventListener("click", function (e) { e.stopPropagation(); save(); });
+  $("btn-load").addEventListener("click", function (e) { e.stopPropagation(); load(); });
+  $("play-screen").addEventListener("click", function (e) {
+    if (e.target.closest("#topbar") || e.target.closest("#choices")) return;
+    advance();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") {
+      if (document.activeElement && document.activeElement.tagName === "BUTTON") document.activeElement.blur();
+      e.preventDefault(); advance();
+    }
+  });
+
+  if (O.startScene) startScene(O.startScene, 0); else toTitle();
+})();
+</script>
+
+<!-- ================================================================
+     エディタ本体
+     ================================================================ -->
+<script>
+"use strict";
+const STORAGE_KEY = "novel-maker-project-v1";
+
+function uid() { return "s" + Math.random().toString(36).slice(2, 9); }
+function el(tag, attrs, ...children) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (k === "value") e.value = v;
+    else if (v === true) e.setAttribute(k, "");
+    else if (v !== false && v != null) e.setAttribute(k, v);
+  }
+  for (const c of children.flat()) if (c != null) e.append(c);
+  return e;
+}
+const $ = (id) => document.getElementById(id);
+
+function sampleProject() {
+  const a = uid(), b = uid(), c = uid(), d = uid();
+  return {
+    title: "放課後の秘密",
+    settings: { author: "", speed: 35, bg: "#1b1d2a", fg: "#f5f5f5", accent: "#c8546a" },
+    start: a,
+    scenes: [
+      { id: a, name: "プロローグ", bg: "#2a2438", lines: [
+          { speaker: "", text: "放課後の教室。窓の外はオレンジ色に染まっている。" },
+          { speaker: "", text: "帰り支度をしていると、机の中に一通の手紙が入っていた。" },
+          { speaker: "ユウキ", text: "……「屋上で待っています」？" },
+        ], end: "choice", next: "", endTitle: "",
+        choices: [ { text: "屋上へ行ってみる", target: b }, { text: "気にせず帰る", target: c } ] },
+      { id: b, name: "屋上", bg: "#3b2f4a", lines: [
+          { speaker: "", text: "重い扉を開けると、夕陽を背にして誰かが立っていた。" },
+          { speaker: "アオイ", text: "来てくれたんだ。……ずっと、伝えたいことがあったの。" },
+        ], end: "next", next: d, endTitle: "", choices: [] },
+      { id: c, name: "帰り道", bg: "#1e2b3a", lines: [
+          { speaker: "", text: "いたずらだろう。そう思って、手紙をかばんにしまった。" },
+          { speaker: "", text: "あの手紙の差出人が誰だったのか、ぼくが知ることはなかった。" },
+        ], end: "end", next: "", endTitle: "ノーマルエンド「知らないまま」", choices: [] },
+      { id: d, name: "告白", bg: "#4a2f3a", lines: [
+          { speaker: "アオイ", text: "明日も、一緒に帰ってくれる？" },
+          { speaker: "ユウキ", text: "……うん、もちろん。" },
+        ], end: "end", next: "", endTitle: "ハッピーエンド「夕焼けの約束」", choices: [] },
+    ],
+  };
+}
+function emptyProject() {
+  const a = uid();
+  return {
+    title: "新しいゲーム",
+    settings: { author: "", speed: 35, bg: "#1b1d2a", fg: "#f5f5f5", accent: "#c8546a" },
+    start: a,
+    scenes: [{ id: a, name: "はじまり", bg: "", lines: [{ speaker: "", text: "" }], end: "end", next: "", endTitle: "", choices: [] }],
+  };
+}
+
+function normalize(p) {
+  if (!p || !Array.isArray(p.scenes)) throw new Error("プロジェクトファイルの形式が正しくありません");
+  p.title = p.title || "無題のゲーム";
+  p.settings = Object.assign({ author: "", speed: 35, bg: "#1b1d2a", fg: "#f5f5f5", accent: "#c8546a" }, p.settings || {});
+  p.scenes.forEach((s) => {
+    s.id = s.id || uid(); s.name = s.name || "シーン"; s.bg = s.bg || "";
+    s.lines = Array.isArray(s.lines) ? s.lines : [];
+    s.choices = Array.isArray(s.choices) ? s.choices : [];
+    s.end = ["next", "choice", "end"].includes(s.end) ? s.end : "end";
+    s.next = s.next || ""; s.endTitle = s.endTitle || "";
+  });
+  if (!p.scenes.length) p.scenes.push(emptyProject().scenes[0]);
+  if (!p.scenes.some((s) => s.id === p.start)) p.start = p.scenes[0].id;
+  return p;
+}
+
+let project;
+let currentId;
+try { project = normalize(JSON.parse(localStorage.getItem(STORAGE_KEY))); }
+catch (e) { project = sampleProject(); }
+currentId = project.start;
+
+const sceneById = (id) => project.scenes.find((s) => s.id === id);
+const current = () => sceneById(currentId) || project.scenes[0];
+
+// ---------- 保存 ----------
+let saveTimer = null;
+function changed(rerenderList = true) {
+  clearTimeout(saveTimer);
+  $("save-status").textContent = "保存中…";
+  saveTimer = setTimeout(() => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(project)); $("save-status").textContent = "自動保存済み"; }
+    catch (e) { $("save-status").textContent = "自動保存できません（プロジェクト保存を使ってください）"; }
+  }, 300);
+  if (rerenderList) renderSceneList();
+}
+function toast(msg) {
+  const t = el("div", { class: "toast" }, msg);
+  document.body.append(t);
+  setTimeout(() => t.remove(), 2200);
+}
+
+// ---------- 検証 ----------
+function sceneProblems(s) {
+  const out = [];
+  if (s.end === "next") {
+    if (!s.next) out.push("「次のシーン」が選ばれていません");
+    else if (!sceneById(s.next)) out.push("「次のシーン」が存在しません");
+  }
+  if (s.end === "choice") {
+    if (!s.choices.length) out.push("選択肢がありません");
+    s.choices.forEach((c, i) => {
+      if (!c.text.trim()) out.push(`選択肢${i + 1}の文章が空です`);
+      if (!sceneById(c.target)) out.push(`選択肢${i + 1}の行き先が選ばれていません`);
+    });
+  }
+  return out;
+}
+function reachable() {
+  const seen = new Set(); const stack = [project.start];
+  while (stack.length) {
+    const id = stack.pop(); const s = sceneById(id);
+    if (!s || seen.has(id)) continue; seen.add(id);
+    if (s.end === "next") stack.push(s.next);
+    if (s.end === "choice") s.choices.forEach((c) => stack.push(c.target));
+  }
+  return seen;
+}
+
+// ---------- シーン一覧 ----------
+function renderSceneList() {
+  const list = $("scene-list"); list.innerHTML = "";
+  const reach = reachable();
+  project.scenes.forEach((s) => {
+    const name = (id) => { const t = sceneById(id); return t ? t.name : null; };
+    let flow;
+    if (s.end === "next") {
+      const n = name(s.next);
+      flow = n ? ["→ " + n] : [el("span", { class: "bad" }, "→ （未設定）")];
+    } else if (s.end === "choice") {
+      flow = s.choices.length ? s.choices.map((c, i) => {
+        const n = name(c.target);
+        return el("div", {}, `◇ ${c.text || "（空）"} → `, n ? n : el("span", { class: "bad" }, "（未設定）"));
+      }) : [el("span", { class: "bad" }, "◇ 選択肢なし")];
+    } else {
+      flow = ["■ エンディング" + (s.endTitle ? "：" + s.endTitle : "")];
+    }
+    const badges = [];
+    if (s.id === project.start) badges.push(el("span", { class: "badge" }, "START"));
+    if (s.end === "end") badges.push(el("span", { class: "badge end" }, "END"));
+    if (sceneProblems(s).length) badges.push(el("span", { class: "badge warn", title: sceneProblems(s).join("\n") }, "!"));
+    if (!reach.has(s.id)) badges.push(el("span", { class: "badge warn", title: "どこからも到達できないシーンです" }, "未到達"));
+    list.append(el("div", {
+        class: "scene-item" + (s.id === currentId ? " active" : ""),
+        onclick: () => { currentId = s.id; renderAll(); },
+      },
+      el("div", { class: "name" }, s.name || "（無名）", ...badges),
+      el("div", { class: "flow" }, ...flow)));
+  });
+}
+
+// ---------- シーン編集 ----------
+function sceneOptions(selected, includeNew = true) {
+  const sel = [el("option", { value: "" }, "― シーンを選ぶ ―")];
+  project.scenes.forEach((s) => sel.push(el("option", { value: s.id, selected: s.id === selected }, s.name)));
+  if (includeNew) sel.push(el("option", { value: "__new__" }, "＋ 新しいシーンを作って移動先にする"));
+  return sel;
+}
+function handleTargetChange(selectEl, setter) {
+  if (selectEl.value === "__new__") {
+    const s = newScene();
+    setter(s.id);
+    toast(`シーン「${s.name}」を作成しました`);
+    renderAll();
+  } else { setter(selectEl.value); changed(); }
+}
+function newScene() {
+  const s = { id: uid(), name: "シーン" + (project.scenes.length + 1), bg: "", lines: [{ speaker: "", text: "" }], end: "end", next: "", endTitle: "", choices: [] };
+  project.scenes.push(s); changed();
+  return s;
+}
+
+function renderEditor() {
+  const s = current(); currentId = s.id;
+  const main = $("main"); main.innerHTML = "";
+
+  const probs = sceneProblems(s);
+  if (probs.length) main.append(el("div", { class: "problems" }, probs.map((p) => el("div", { class: "problem" }, "⚠ " + p))));
+
+  // --- シーン基本情報
+  main.append(el("div", { class: "card" },
+    el("h3", {}, "シーンの設定"),
+    el("div", { class: "row" },
+      el("div", { style: "flex:1;min-width:200px" },
+        el("label", { style: "font-size:12px;color:var(--muted)" }, "シーン名（作者用のメモ。ゲームには表示されません）"),
+        el("input", { type: "text", value: s.name, oninput: (e) => { s.name = e.target.value; changed(); } })),
+      el("div", {},
+        el("label", { style: "font-size:12px;color:var(--muted);display:block" }, "背景色"),
+        el("div", { class: "row" },
+          el("input", { type: "color", value: s.bg || project.settings.bg, oninput: (e) => { s.bg = e.target.value; changed(false); } }),
+          el("button", { class: "small", onclick: () => { s.bg = ""; changed(false); renderEditor(); } }, "標準に戻す")))),
+    el("div", { class: "row", style: "margin-top:12px" },
+      s.id === project.start
+        ? el("span", { class: "badge" }, "このシーンからゲームが始まります")
+        : el("button", { class: "small", onclick: () => { project.start = s.id; changed(); renderEditor(); } }, "★ 開始シーンにする"),
+      el("button", { class: "small", onclick: () => openPreview(s.id) }, "▶ このシーンから再生"),
+      el("button", { class: "small", onclick: () => duplicateScene(s) }, "複製"),
+      el("span", { style: "flex:1" }),
+      el("button", { class: "small danger", onclick: () => deleteScene(s) }, "シーンを削除"))));
+
+  // --- テキスト
+  const linesWrap = el("div");
+  const renderLines = () => {
+    linesWrap.innerHTML = "";
+    if (!s.lines.length) linesWrap.append(el("div", { class: "empty" }, "メッセージがありません。下のボタンで追加してください。"));
+    s.lines.forEach((l, i) => {
+      const ta = el("textarea", { rows: 2, placeholder: "表示する文章を入力（改行もそのまま表示されます）", oninput: (e) => { l.text = e.target.value; changed(false); } });
+      ta.value = l.text;
+      linesWrap.append(el("div", { class: "line-card" },
+        el("div", { class: "idx" }, String(i + 1)),
+        el("input", { type: "text", value: l.speaker, placeholder: "名前（空欄=地の文）", list: "speaker-list",
+          oninput: (e) => { l.speaker = e.target.value; changed(false); }, onchange: updateSpeakerList }),
+        ta,
+        el("div", { class: "ops" },
+          el("button", { class: "icon small", title: "上へ", disabled: i === 0, onclick: () => { move(s.lines, i, -1); renderLines(); } }, "↑"),
+          el("button", { class: "icon small", title: "下へ", disabled: i === s.lines.length - 1, onclick: () => { move(s.lines, i, 1); renderLines(); } }, "↓"),
+          el("button", { class: "icon small", title: "この下に追加", onclick: () => { s.lines.splice(i + 1, 0, { speaker: l.speaker, text: "" }); changed(false); renderLines(); focusLine(i + 1); } }, "＋"),
+          el("button", { class: "icon small danger", title: "削除", onclick: () => { s.lines.splice(i, 1); changed(false); renderLines(); } }, "✕"))));
+    });
+  };
+  const focusLine = (i) => { const t = linesWrap.querySelectorAll("textarea")[i]; if (t) t.focus(); };
+  renderLines();
+  main.append(el("div", { class: "card" },
+    el("h3", {}, el("span", { class: "num" }, "1"), "表示するテキスト"),
+    el("p", { class: "hint" }, "上から順に1つずつ表示されます。プレイヤーがクリックすると次へ進みます。"),
+    linesWrap,
+    el("div", { class: "row" },
+      el("button", { class: "primary", onclick: () => { const last = s.lines[s.lines.length - 1]; s.lines.push({ speaker: last ? last.speaker : "", text: "" }); changed(false); renderLines(); focusLine(s.lines.length - 1); } }, "＋ メッセージを追加"),
+      el("button", { onclick: () => openBulk(s, renderLines) }, "まとめて追加…"))));
+
+  // --- 終わり方
+  const seg = (val, label) => el("button", { class: s.end === val ? "on" : "", onclick: () => {
+    s.end = val;
+    if (val === "choice" && !s.choices.length) s.choices.push({ text: "", target: "" }, { text: "", target: "" });
+    changed(); renderEditor();
+  } }, label);
+  const endBody = el("div");
+  if (s.end === "next") {
+    endBody.append(el("div", { class: "field" },
+      el("label", {}, "次に進むシーン"),
+      el("select", { onchange: (e) => handleTargetChange(e.target, (v) => { s.next = v; }) }, sceneOptions(s.next))));
+  } else if (s.end === "choice") {
+    endBody.append(el("p", { class: "hint", style: "margin-top:0" }, "テキストを最後まで読むと選択肢が表示されます。選んだ選択肢によって移動先のシーンが変わります。"));
+    if (!s.choices.length) endBody.append(el("div", { class: "empty" }, "選択肢がありません。"));
+    s.choices.forEach((c, i) => {
+      endBody.append(el("div", { class: "choice-card" },
+        el("input", { type: "text", value: c.text, placeholder: `選択肢${i + 1}の文章（例：右の道へ進む）`, oninput: (e) => { c.text = e.target.value; changed(); } }),
+        el("select", { onchange: (e) => handleTargetChange(e.target, (v) => { c.target = v; }) }, sceneOptions(c.target)),
+        el("div", { class: "row", style: "gap:4px" },
+          el("button", { class: "icon small", title: "上へ", disabled: i === 0, onclick: () => { move(s.choices, i, -1); changed(); renderEditor(); } }, "↑"),
+          el("button", { class: "icon small", title: "移動先を編集", disabled: !sceneById(c.target), onclick: () => { currentId = c.target; renderAll(); } }, "→"),
+          el("button", { class: "icon small danger", title: "削除", onclick: () => { s.choices.splice(i, 1); changed(); renderEditor(); } }, "✕"))));
+    });
+    endBody.append(el("button", { onclick: () => { s.choices.push({ text: "", target: "" }); changed(); renderEditor(); } }, "＋ 選択肢を追加"));
+  } else {
+    endBody.append(el("div", { class: "field" },
+      el("label", {}, "エンディング名（任意。END画面に表示されます）"),
+      el("input", { type: "text", value: s.endTitle, placeholder: "例：ハッピーエンド「夕焼けの約束」", oninput: (e) => { s.endTitle = e.target.value; changed(); } })));
+  }
+  main.append(el("div", { class: "card" },
+    el("h3", {}, el("span", { class: "num" }, "2"), "テキストを読み終わったら"),
+    el("div", { class: "seg" }, seg("next", "次のシーンへ進む"), seg("choice", "選択肢で分岐する"), seg("end", "エンディング")),
+    endBody));
+
+  updateSpeakerList();
+}
+
+function updateSpeakerList() {
+  let dl = $("speaker-list");
+  if (!dl) { dl = el("datalist", { id: "speaker-list" }); document.body.append(dl); }
+  dl.innerHTML = "";
+  const names = new Set();
+  project.scenes.forEach((s) => s.lines.forEach((l) => l.speaker && names.add(l.speaker)));
+  names.forEach((n) => dl.append(el("option", { value: n })));
+}
+function move(arr, i, d) { const j = i + d; if (j < 0 || j >= arr.length) return; [arr[i], arr[j]] = [arr[j], arr[i]]; changed(); }
+
+function deleteScene(s) {
+  if (project.scenes.length <= 1) { alert("最後のシーンは削除できません。"); return; }
+  if (!confirm(`シーン「${s.name}」を削除しますか？\nこのシーンへの移動先設定は「未設定」になります。`)) return;
+  project.scenes = project.scenes.filter((x) => x !== s);
+  project.scenes.forEach((x) => {
+    if (x.next === s.id) x.next = "";
+    x.choices.forEach((c) => { if (c.target === s.id) c.target = ""; });
+  });
+  if (project.start === s.id) project.start = project.scenes[0].id;
+  currentId = project.scenes[0].id;
+  changed(); renderAll();
+}
+function duplicateScene(s) {
+  const copy = JSON.parse(JSON.stringify(s));
+  copy.id = uid(); copy.name = s.name + "（コピー）";
+  project.scenes.splice(project.scenes.indexOf(s) + 1, 0, copy);
+  currentId = copy.id; changed(); renderAll();
+}
+
+function renderAll() {
+  $("project-title").value = project.title;
+  renderSceneList();
+  renderEditor();
+}
+
+// ---------- 一括入力 ----------
+let bulkTarget = null;
+function openBulk(scene, after) { bulkTarget = { scene, after }; $("bulk-text").value = ""; $("bulk-modal").classList.remove("hidden"); $("bulk-text").focus(); }
+$("btn-bulk-close").onclick = () => $("bulk-modal").classList.add("hidden");
+$("btn-bulk-add").onclick = () => {
+  const rows = $("bulk-text").value.split(/\r?\n/).map((r) => r.trim()).filter(Boolean);
+  const s = bulkTarget.scene;
+  // 末尾の空メッセージは置き換える
+  while (s.lines.length && !s.lines[s.lines.length - 1].text.trim() && !s.lines[s.lines.length - 1].speaker) s.lines.pop();
+  rows.forEach((r) => {
+    let speaker = "", text = r, m;
+    if ((m = r.match(/^([^：:「」。、\s]{1,15})[：:](?!\d)\s*(.+)$/))) { speaker = m[1].trim(); text = m[2]; }
+    else if ((m = r.match(/^([^「]{1,20})「(.*)」$/))) { speaker = m[1].trim(); text = m[2]; }
+    s.lines.push({ speaker, text: text.replace(/\\n/g, "\n") });
+  });
+  $("bulk-modal").classList.add("hidden");
+  changed(); bulkTarget.after(); updateSpeakerList();
+  toast(`${rows.length}件のメッセージを追加しました`);
+};
+
+// ---------- ゲームHTMLの生成 ----------
+function escHtml(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function safeJson(v) { return JSON.stringify(v).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029"); }
+function buildGameHTML(opts) {
+  const data = {
+    title: project.title, start: project.start, settings: project.settings,
+    scenes: project.scenes.map((s) => ({
+      id: s.id, name: s.name, bg: s.bg, end: s.end, next: s.next, endTitle: s.endTitle,
+      lines: s.lines.filter((l) => l.text.trim() || l.speaker.trim()),
+      choices: s.choices.filter((c) => c.text.trim() && sceneById(c.target)),
+    })),
+  };
+  return "<!DOCTYPE html>\n<html lang=\"ja\">\n<head>\n<meta charset=\"utf-8\">\n" +
+    "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n" +
+    "<title>" + escHtml(project.title) + "</title>\n" +
+    "<style>" + $("tpl-css").textContent + "</style>\n</head>\n<body>\n" +
+    $("tpl-body").textContent +
+    "\n<script>var GAME=" + safeJson(data) + ";var OPTS=" + safeJson(opts || {}) + ";<\/script>\n" +
+    "<script>" + $("tpl-js").textContent + "<\/script>\n</body>\n</html>\n";
+}
+
+// ---------- テストプレイ ----------
+let previewStart = null;
+function openPreview(sceneId) {
+  previewStart = sceneId || null;
+  $("preview-title").textContent = sceneId ? `テストプレイ（「${sceneById(sceneId).name}」から）` : "テストプレイ";
+  $("preview-frame").srcdoc = buildGameHTML(sceneId ? { startScene: sceneId, debug: true } : { debug: true });
+  $("preview-modal").classList.remove("hidden");
+  setTimeout(() => $("preview-frame").focus(), 100);
+}
+$("btn-play").onclick = () => openPreview(null);
+$("btn-preview-restart").onclick = () => openPreview(previewStart);
+$("btn-preview-close").onclick = () => { $("preview-modal").classList.add("hidden"); $("preview-frame").srcdoc = ""; };
+
+// ---------- ファイル ----------
+function download(name, text, type) {
+  const blob = new Blob([text], { type });
+  const a = el("a", { href: URL.createObjectURL(blob), download: name });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function fileSafe(s) { return (s || "game").replace(/[\\/:*?"<>|]/g, "_").trim() || "game"; }
+
+$("btn-export").onclick = () => {
+  const all = project.scenes.flatMap((s) => sceneProblems(s).map((p) => `・${s.name}：${p}`));
+  if (all.length && !confirm("次の問題があります。このまま出力しますか？\n（未設定の移動先はエンディング扱いになります）\n\n" + all.join("\n"))) return;
+  download(fileSafe(project.title) + ".html", buildGameHTML({}), "text/html");
+  toast("ゲームを出力しました。ダウンロードしたHTMLファイルをダブルクリックで遊べます");
+};
+$("btn-save").onclick = () => {
+  download(fileSafe(project.title) + ".novel.json", JSON.stringify(project, null, 2), "application/json");
+  toast("プロジェクトを保存しました");
+};
+$("btn-open").onclick = () => $("file-input").click();
+$("file-input").onchange = async (e) => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  try {
+    project = normalize(JSON.parse(await f.text()));
+    currentId = project.start; changed(); renderAll();
+    toast(`「${project.title}」を開きました`);
+  } catch (err) { alert("ファイルを開けませんでした：" + err.message); }
+};
+$("btn-new").onclick = () => {
+  const choice = prompt("新規作成します。現在の内容は消えます（必要なら先に「プロジェクト保存」してください）。\n\n1 = 空のプロジェクト\n2 = サンプルのお話\n\n番号を入力してください", "1");
+  if (choice !== "1" && choice !== "2") return;
+  project = choice === "2" ? sampleProject() : emptyProject();
+  currentId = project.start; changed(); renderAll();
+};
+$("btn-add-scene").onclick = () => { const s = newScene(); currentId = s.id; renderAll(); };
+$("project-title").oninput = (e) => { project.title = e.target.value; changed(false); };
+
+// ---------- 設定 ----------
+const settingInputs = { author: "set-author", speed: "set-speed", bg: "set-bg", fg: "set-fg", accent: "set-accent" };
+$("btn-settings").onclick = () => {
+  for (const [k, id] of Object.entries(settingInputs)) $(id).value = project.settings[k];
+  $("settings-modal").classList.remove("hidden");
+};
+for (const [k, id] of Object.entries(settingInputs)) {
+  $(id).addEventListener("input", (e) => {
+    project.settings[k] = k === "speed" ? Math.max(0, Number(e.target.value) || 0) : e.target.value;
+    changed(false);
+  });
+}
+$("btn-settings-close").onclick = () => { $("settings-modal").classList.add("hidden"); renderEditor(); };
+
+document.querySelectorAll(".modal-bg").forEach((m) => m.addEventListener("click", (e) => {
+  if (e.target === m) { m.classList.add("hidden"); if (m.id === "preview-modal") $("preview-frame").srcdoc = ""; }
+}));
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") document.querySelectorAll(".modal-bg").forEach((m) => { m.classList.add("hidden"); });
+  if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); $("btn-save").click(); }
+});
+
+renderAll();
+changed();
+</script>
+</body>
+</html>
